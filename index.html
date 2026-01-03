@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Fireworks Display</title>
+    <!-- GSAP for Screen Shake -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --active-bg: rgba(255, 200, 100, 0.3);
+            --active-border: gold;
+            --text-color: rgba(255, 255, 255, 0.9);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        body {
+            background-color: #000000;
+            overflow: hidden;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: var(--text-color);
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* UI Overlay */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Controls Container */
+        .controls-container {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            pointer-events: auto;
+            width: 90%;
+            max-width: 600px;
+        }
+
+        /* Top Right Controls */
+        .top-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        .icon-btn {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: white;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            transition: all 0.2s ease;
+        }
+
+        .icon-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .icon-btn.paused {
+            background: rgba(255, 50, 50, 0.4);
+            border-color: rgba(255, 0, 0, 0.5);
+        }
+
+        .icon-btn.recording {
+            background: rgba(255, 0, 0, 0.6);
+            border-color: red;
+            box-shadow: 0 0 15px red;
+            animation: pulse-red 1.5s infinite;
+        }
+
+        @keyframes pulse-red {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(255, 0, 0, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
+            }
+        }
+
+        /* Button Groups */
+        .btn-group {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .glass-btn {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            padding: 10px 20px;
+            border-radius: 20px;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 500;
+        }
+
+        .glass-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .glass-btn.active {
+            background: var(--active-bg);
+            border-color: var(--active-border);
+            box-shadow: 0 0 10px rgba(255, 200, 0, 0.2);
+        }
+
+        .shape-btn {
+            min-width: 80px;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+            .glass-btn {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+
+            .controls-container {
+                width: 95%;
+                bottom: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="main-canvas"></canvas>
+
+    <div id="ui-layer">
+        <div class="top-controls">
+            <button id="btn-pause" class="icon-btn" title="Pause/Resume">⏸️</button>
+            <button id="btn-sound" class="icon-btn" title="Toggle Sound">🔊</button>
+            <button id="btn-record" class="icon-btn" title="Start Recording">🔴</button>
+        </div>
+
+        <div class="controls-container">
+            <!-- Mode Selection -->
+            <div class="btn-group">
+                <button class="glass-btn active" data-mode="normal">Random</button>
+                <button class="glass-btn" data-mode="rapid">Rapid Fire</button>
+                <button class="glass-btn" data-mode="finale">Grand Finale</button>
+                <button class="glass-btn" data-mode="auto">Auto Show</button>
+            </div>
+
+            <!-- Shape Selection -->
+            <div class="btn-group">
+                <button class="glass-btn shape-btn" data-shape="heart">Heart</button>
+                <button class="glass-btn shape-btn" data-shape="star">Star</button>
+                <button class="glass-btn shape-btn" data-shape="ring">Ring</button>
+                <button class="glass-btn shape-btn" data-shape="spiral">Spiral</button>
+                <button class="glass-btn shape-btn" data-shape="flower">Flower</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Configuration & Constants
+         */
+        const CONFIG = {
+            GRAVITY: 0.03,
+            FRICTION: 0.99,
+            CHARACTER_SIZE: 90,
+            CHARACTER_DURATION: 120, // Frames to hold shape (~2s @ 60fps)
+            PARTICLES_PER_EXPLOSION: 400, // Adjusted for performance
+            CHARACTER_PARTICLES: 150,
+            COLORS: [
+                '#ff1744', '#ff4081', '#e040fb', '#7c4dff', '#536dfe', '#448aff',
+                '#00b0ff', '#00e5ff', '#1de9b6', '#00e676', '#76ff03', '#c6ff00',
+                '#ffea00', '#ffc400', '#ff9100', '#ff3d00'
+            ],
+            TRAIL_LENGTH: 8,
+            FADE_RATE_SHAPE: 0.004,
+            FADE_RATE_BURST: 0.008
+        };
+
+        /**
+         * Sound Manager
+         */
+        class SoundManager {
+            constructor() {
+                this.enabled = true;
+                this.ctx = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+                    // Create a destination node for recording
+                    this.dest = this.ctx.createMediaStreamDestination();
+
+                    // Connect master gain to both speakers and recording stream
+                    this.masterGain = this.ctx.createGain();
+                    this.masterGain.connect(this.ctx.destination);
+                    this.masterGain.connect(this.dest);
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            toggle() {
+                this.enabled = !this.enabled;
+                return this.enabled;
+            }
+
+            playLaunch() {
+                if (!this.enabled || !this.ctx) return;
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(300, this.ctx.currentTime + 0.5);
+
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
+
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.5);
+            }
+
+            playExplosion() {
+                if (!this.enabled || !this.ctx) return;
+
+                const bufferSize = this.ctx.sampleRate * 0.5; // 0.5s
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(1000, this.ctx.currentTime);
+                filter.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.5);
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.masterGain);
+
+                noise.start();
+            }
+        }
+
+        /**
+         * Shape Generator
+         */
+        const ShapeGenerator = {
+            getRandomShape() {
+                const shapes = ['heart', 'star', 'ring', 'spiral', 'doubleRing', 'diamond', 'flower'];
+                return shapes[Math.floor(Math.random() * shapes.length)];
+            },
+
+            getPoints(type) {
+                switch (type) {
+                    case 'heart': return this.getHeartPoints();
+                    case 'star': return this.getStarPoints();
+                    case 'ring': return this.getRingPoints();
+                    case 'spiral': return this.getSpiralPoints();
+                    case 'doubleRing': return this.getDoubleRingPoints();
+                    case 'diamond': return this.getDiamondPoints();
+                    case 'flower': return this.getFlowerPoints();
+                    default: return []; // Random burst doesn't use points here
+                }
+            },
+
+            getHeartPoints(n = CONFIG.CHARACTER_PARTICLES) {
+                const points = [];
+                for (let i = 0; i < n; i++) {
+                    const t = (i / n) * Math.PI * 2;
+                    const x = 16 * Math.pow(Math.sin(t), 3);
+                    const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+                    // Scale normalized ~(-16 to 16) -> ~(-1 to 1) roughly for consistent sizing
+                    points.push([x / 16, y / 16]);
+                }
+                return points;
+            },
+
+            getStarPoints(n = CONFIG.CHARACTER_PARTICLES) {
+                const points = [];
+                for (let i = 0; i < n; i++) {
+                    const angle = (i / n) * Math.PI * 2;
+                    // 5 points star logic simplified
+                    // r alternates between inner and outer limits at 5 frequency
+                    // Use a slightly smoother adaptation for clear star shape
+                    const r = 0.5 + 0.5 * (Math.abs(Math.sin(angle * 2.5)) > 0.8 ? 1 : 0.4);
+                    // Better parametric star:
+                    // r = output radius, alternating 1.0 (tip) and 0.4 (valley)
+                    // Let's stick to simple alternating radius or parametric
+                    const spike = 5;
+                    const step = Math.PI / spike;
+                    // To do a rigorous distribution we usually trace lines. 
+                    // Approximation: 
+                    const k = (i % 2 === 0) ? 1.0 : 0.4; // not enough points if just alternating index
+                    // Parametric approach:
+                    const t = (i / n) * Math.PI * 2 * spike;
+                    const radius = (Math.cos(t) + 2) / 3; // soft star
+                    // Let's use the user spec: Alternating inner (20) and outer (50)
+                    // We need to trace the perimeter.
+                    // This is hard to distribute 150 points evenly without path walking.
+                    // Simple alternative: Angle based
+                    const a = (i / n) * Math.PI * 2;
+                    // 5 points -> 5 peaks. 
+                    // Modulate radius based on angle.
+                    const rBase = 0.4 + 0.6 * Math.abs(Math.cos(a * 2.5));
+                    // That's more of a flower. 
+                    // Sharp star:
+                    const sectors = 5;
+                    const sectorAngle = (Math.PI * 2) / sectors;
+                    const localAngle = Math.abs((a % sectorAngle) - sectorAngle / 2);
+                    // This creates straight lines if mapped correctly, but let's just do the provided 20/50 radius logic
+                    // User said: "Alternating inner radius (20) and outer radius (50)"
+                    // This implies vertices. But we need 150 points.
+                    // Let's interpolate between vertices.
+                    // Actually, let's use a simpler star eqn:
+                    const wa = a * 5;
+                    // r oscillates. 
+                    const rw = 0.5 * (Math.sin(wa) > 0 ? 1 : 0.4); // This creates disconnected dots
+                    // Let's just use 5-petal flower as fallback or standard parametric star
+
+                    points.push([Math.cos(a) * rBase, Math.sin(a) * rBase]);
+                }
+                return points;
+            },
+
+            // Re-implementing Star correctly as per user request (alternating radii)
+            // But distributing points along the lines
+            getStarPoints(n = CONFIG.CHARACTER_PARTICLES) {
+                const points = [];
+                const spikes = 5;
+                const outerRadius = 1.0;
+                const innerRadius = 0.4;
+
+                for (let i = 0; i < n; i++) {
+                    const t = (i / n) * Math.PI * 2;
+                    // Logic to interpolate between inner and outer for star shape
+                    // Angle determines radius
+                    const anglePerSpike = (Math.PI * 2) / spikes;
+                    const angleInSpike = t % anglePerSpike;
+                    const halfSpike = anglePerSpike / 2;
+
+                    let r = innerRadius;
+                    // Linear interpolation based on angle distance from center of spike
+                    if (angleInSpike < halfSpike) {
+                        r = innerRadius + (outerRadius - innerRadius) * (angleInSpike / halfSpike);
+                    } else {
+                        r = outerRadius - (outerRadius - innerRadius) * ((angleInSpike - halfSpike) / halfSpike);
+                    }
+
+                    points.push([r * Math.cos(t), r * Math.sin(t)]);
+                }
+                return points;
+            },
+
+            getRingPoints(n = CONFIG.CHARACTER_PARTICLES) {
+                const points = [];
+                for (let i = 0; i < n; i++) {
+                    const t = (i / n) * Math.PI * 2;
+                    points.push([Math.cos(t), Math.sin(t)]);
+                }
+                return points;
+            },
+
+            getSpiralPoints(n = CONFIG.CHARACTER_PARTICLES) {
+                const points = [];
+                for (let i = 0; i < n; i++) {
+                    const t = (i / n) * (6 * Math.PI); // 0 to 6pi
+                    const r = i / n; // 0 to 1
+                    points.push([r * Math.cos(t), r * Math.sin(t)]);
+                }
+                return points;
+            },
+
+            getDoubleRingPoints(n = CONFIG.CHARACTER_PARTICLES) {
+                const points = [];
+                const n2 = Math.floor(n / 2);
+                // Outer ring
+                for (let i = 0; i < n2; i++) {
+                    const t = (i / n2) * Math.PI * 2;
+                    points.push([Math.cos(t), Math.sin(t)]);
+                }
+                // Inner ring (0.5 radius)
+                for (let i = 0; i < (n - n2); i++) {
+                    const t = (i / (n - n2)) * Math.PI * 2;
+                    points.push([0.5 * Math.cos(t), 0.5 * Math.sin(t)]);
+                }
+                return points;
+            },
+
+            getDiamondPoints(n = CONFIG.CHARACTER_PARTICLES) {
+                const points = [];
+                // 4 sides
+                for (let i = 0; i < n; i++) {
+                    const t = (i / n) * 4; // 0 to 4
+                    const side = Math.floor(t);
+                    const frac = t - side;
+
+                    let x, y;
+                    // Rhombus: (1,0) -> (0,1) -> (-1,0) -> (0,-1) -> (1,0)
+                    if (side === 0) { x = 1 - frac; y = frac; }
+                    else if (side === 1) { x = -frac; y = 1 - frac; }
+                    else if (side === 2) { x = -1 + frac; y = -frac; }
+                    else { x = frac; y = -1 + frac; }
+
+                    points.push([x, y]);
+                }
+                return points;
+            },
+
+            getFlowerPoints(n = CONFIG.CHARACTER_PARTICLES) {
+                const points = [];
+                for (let i = 0; i < n; i++) {
+                    const angle = (i / n) * Math.PI * 2;
+                    // r = 30 + 20*cos(6*angle) -> Normalized: 0.6 + 0.4*cos(...)
+                    const r = 0.6 + 0.4 * Math.cos(6 * angle);
+                    points.push([r * Math.cos(angle), r * Math.sin(angle)]);
+                }
+                return points;
+            }
+        };
+
+        /**
+         * Particle Class
+         */
+        class Particle {
+            constructor(x, y, color, type = 'burst', targetOffset = null) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.type = type; // 'trail', 'burst', 'shape'
+
+                this.size = 2.5;
+                this.alpha = 1;
+                this.friction = CONFIG.FRICTION;
+                this.gravity = CONFIG.GRAVITY;
+
+                // Trail
+                this.trail = [];
+                this.maxTrail = CONFIG.TRAIL_LENGTH;
+
+                // Sparkle
+                this.hasSparkle = Math.random() < 0.3;
+                this.sparklePhase = Math.random() * Math.PI * 2;
+
+                // Physics
+                if (type === 'trail') {
+                    this.vx = (Math.random() - 0.5) * 1;
+                    this.vy = (Math.random() - 0.5) * 1 + 2; // Downward bias
+                    this.fadeRate = 0.03;
+                    this.size = 2;
+                } else if (type === 'burst') {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 8; // Random burst speed
+                    this.vx = Math.cos(angle) * speed;
+                    this.vy = Math.sin(angle) * speed;
+                    this.fadeRate = CONFIG.FADE_RATE_BURST;
+                } else if (type === 'shape') {
+                    // Start with almost no velocity, will be controlled by "formation"
+                    // x, y are the center of explosion.
+                    // We need to move towards targetOffset
+                    this.targetX = x + targetOffset[0] * CONFIG.CHARACTER_SIZE;
+                    this.targetY = y + targetOffset[1] * CONFIG.CHARACTER_SIZE;
+
+                    // Start exactly at center -> explode out to shape
+                    // OR: Start at center, zoom to shape.
+                    // Spec: "White particles form the shape and hold formation"
+                    // "Colored burst particles explode outward immediately" -> Wait, prompts says:
+                    // "White particles form the shape... Colored burst particles explode outward immediately"
+                    // For shape particles:
+                    this.vx = (Math.random() - 0.5) * 0.5;
+                    this.vy = (Math.random() - 0.5) * 0.5;
+                    this.x = this.targetX; // Cheat: Start AT shape position for legibility instantly or Lerp?
+                    // Spec: "Shapes stay legible with subtle shimmering effect"
+                    // Let's spawn them AT the target shape position initially to ensure they look good, 
+                    // maybe with small random offset.
+                    this.x = this.targetX + (Math.random() - 0.5) * 2;
+                    this.y = this.targetY + (Math.random() - 0.5) * 2;
+
+                    this.formationFrame = 0;
+                    this.formationDuration = CONFIG.CHARACTER_DURATION;
+
+                    // After formation, they explode
+                    const angle = Math.atan2(targetOffset[1], targetOffset[0]);
+                    const speed = 2 + Math.random() * 2;
+                    this.postShapeVx = Math.cos(angle) * speed;
+                    this.postShapeVy = Math.sin(angle) * speed;
+
+                    this.color = '#ffffff'; // Shape is white initially? Spec says "White particles form the shape"
+                    this.fadeRate = CONFIG.FADE_RATE_SHAPE;
+                    this.gravity = CONFIG.GRAVITY * 0.1; // Gentle gravity
+                }
+            }
+
+            update() {
+                // Save trail
+                this.trail.unshift({ x: this.x, y: this.y });
+                if (this.trail.length > this.maxTrail) this.trail.pop();
+
+                if (this.type === 'shape' && this.formationFrame < this.formationDuration) {
+                    // Formation Phase
+                    this.formationFrame++;
+
+                    // Shimmer
+                    this.x += (Math.random() - 0.5) * 0.2;
+                    this.y += (Math.random() - 0.5) * 0.2;
+
+                    // Gentle gravity
+                    this.vy += this.gravity;
+                    this.x += this.vx;
+                    this.y += this.vy;
+
+                    // Pull back to target if drifted too far (maintain shape)
+                    const dx = this.targetX - this.x;
+                    const dy = this.targetY - this.y;
+                    this.x += dx * 0.1;
+                    this.y += dy * 0.1;
+
+                    // Transition to explosion
+                    if (this.formationFrame > this.formationDuration * 0.7) {
+                        // Gradually add explosion velocity
+                        const progress = (this.formationFrame - (this.formationDuration * 0.7)) / (this.formationDuration * 0.3);
+                        this.vx += this.postShapeVx * 0.02 * progress;
+                        this.vy += this.postShapeVy * 0.02 * progress;
+
+                        // Fade color from white to final color? 
+                        // Spec doesn't clarify color transition, but implies Shape is white.
+                        // Use target color if we had it. Let's keep white effectively or maybe tint.
+                    }
+
+                } else {
+                    // Normal Physics
+                    if (this.type === 'shape') {
+                        this.gravity = CONFIG.GRAVITY; // Restore full gravity
+                    }
+
+                    this.vx *= this.friction;
+                    this.vy *= this.friction;
+                    this.vy += this.gravity;
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    this.alpha -= this.fadeRate;
+                }
+            }
+
+            draw(ctx) {
+                if (this.alpha <= 0) return;
+
+                ctx.save();
+
+                // Sparkle effect
+                let opacity = this.alpha;
+                if (this.hasSparkle) {
+                    this.sparklePhase += 0.2;
+                    const sparkle = 0.5 + 0.5 * Math.sin(this.sparklePhase);
+                    opacity *= sparkle;
+                }
+
+                ctx.globalAlpha = opacity;
+                ctx.fillStyle = this.color;
+
+                // Draw point
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw trail
+                if (this.trail.length > 0) {
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y);
+                    for (let i = 0; i < this.trail.length; i++) {
+                        ctx.lineTo(this.trail[i].x, this.trail[i].y);
+                    }
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = this.size * 0.5;
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+        }
+
+        /**
+         * Firework Launch Class
+         */
+        class Firework {
+            constructor(targetX, targetY, shapeType = null) {
+                this.x = window.innerWidth / 2;
+                this.y = window.innerHeight;
+                this.targetX = targetX;
+                this.targetY = targetY;
+                this.shapeType = shapeType;
+
+                // Calculate Launch Velocity
+                // Use simple physics projectile logic: v^2 = u^2 + 2as is overkill
+                // Just aim with enough speed to reach height
+                const dx = targetX - this.x;
+                const dy = targetY - this.y;
+                const distance = Math.hypot(dx, dy);
+
+                const speed = Math.min(distance / 40, 15);
+                const angle = Math.atan2(dy, dx);
+
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+
+                this.color = CONFIG.COLORS[Math.floor(Math.random() * CONFIG.COLORS.length)];
+                this.trail = [];
+                this.exploded = false;
+                this.dead = false;
+            }
+
+            update(particlesArray) {
+                if (this.exploded) return;
+
+                this.trail.push({ x: this.x, y: this.y });
+                if (this.trail.length > 15) this.trail.shift();
+
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += CONFIG.GRAVITY; // Gravity acts on rocket
+
+                // Create trail particles
+                if (Math.random() < 0.5) {
+                    particlesArray.push(new Particle(this.x, this.y, '#ffffff', 'trail'));
+                }
+
+                // Explode condition
+                // At peak (vy >= 0) or close to target
+                if (this.vy >= 0 || this.y <= this.targetY) {
+                    this.explode(particlesArray);
+                }
+            }
+
+            explode(particlesArray) {
+                this.exploded = true;
+                this.dead = true;
+
+                app.sound.playExplosion();
+                app.shakeScreen();
+
+                // Shape Particles
+                if (this.shapeType !== 'random' && this.shapeType) {
+                    // Generate specific shape
+                    const points = ShapeGenerator.getPoints(this.shapeType);
+                    points.forEach(pt => {
+                        particlesArray.push(new Particle(this.x, this.y, '#ffffff', 'shape', pt));
+                    });
+                }
+
+                // Burst Particles (Background filler / Colored burst)
+                // Spec: "Colored burst particles explode outward immediately"
+                const burstCount = (this.shapeType && this.shapeType !== 'random')
+                    ? CONFIG.PARTICLES_PER_EXPLOSION - CONFIG.CHARACTER_PARTICLES
+                    : CONFIG.PARTICLES_PER_EXPLOSION;
+
+                for (let i = 0; i < burstCount; i++) {
+                    const c = (this.shapeType === 'random')
+                        ? CONFIG.COLORS[Math.floor(Math.random() * CONFIG.COLORS.length)]
+                        : this.color;
+
+                    particlesArray.push(new Particle(this.x, this.y, c, 'burst'));
+                }
+            }
+
+            draw(ctx) {
+                if (this.exploded) return;
+
+                ctx.save();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(this.trail[0].x, this.trail[0].y);
+                for (let i = 1; i < this.trail.length; i++) {
+                    ctx.lineTo(this.trail[i].x, this.trail[i].y);
+                }
+                ctx.stroke();
+
+                // Rocket head
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        /**
+         * Recorder Class
+         */
+        class Recorder {
+            constructor(canvas, audioDest) {
+                this.canvas = canvas;
+                this.audioDest = audioDest;
+                this.mediaRecorder = null;
+                this.chunks = [];
+                this.isRecording = false;
+                this.mimeType = '';
+            }
+
+            start() {
+                if (this.isRecording) return;
+
+                // Get video stream (30FPS)
+                const videoStream = this.canvas.captureStream(60);
+
+                // Get audio stream
+                const audioStream = this.audioDest.stream;
+
+                // Combine tracks
+                const combinedStream = new MediaStream([
+                    ...videoStream.getVideoTracks(),
+                    ...audioStream.getAudioTracks()
+                ]);
+
+                // Options: Prefer WebM VP9 (High Quality, Standard)
+                // Linux browsers often produce malformed MP4s, so we stick to WebM.
+                const options = { mimeType: 'video/webm;codecs=vp9' };
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    options.mimeType = 'video/webm'; // Fallback
+                }
+
+                this.mimeType = options.mimeType;
+                console.log('Recording with MIME type:', this.mimeType);
+
+                try {
+                    this.mediaRecorder = new MediaRecorder(combinedStream, options);
+                } catch (e) {
+                    console.error('Failed to create MediaRecorder with options:', options);
+                    this.mediaRecorder = new MediaRecorder(combinedStream);
+                    this.mimeType = this.mediaRecorder.mimeType;
+                }
+
+                this.chunks = [];
+
+                this.mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) {
+                        this.chunks.push(e.data);
+                    }
+                };
+
+                this.mediaRecorder.onstop = () => {
+                    this.saveRecording();
+                };
+
+                this.mediaRecorder.start();
+                this.isRecording = true;
+
+                // Update UI
+                const btn = document.getElementById('btn-record');
+                btn.classList.add('recording');
+                btn.innerText = '⏹️'; // Stop icon
+                btn.title = "Stop Recording";
+            }
+
+            stop() {
+                if (!this.isRecording || !this.mediaRecorder) return;
+                this.mediaRecorder.stop();
+                this.isRecording = false;
+
+                // Update UI
+                const btn = document.getElementById('btn-record');
+                btn.classList.remove('recording');
+                btn.innerText = '🔴';
+                btn.title = "Start Recording";
+            }
+
+            toggle() {
+                if (this.isRecording) {
+                    this.stop();
+                    return false;
+                } else {
+                    this.start();
+                    return true;
+                }
+            }
+
+            saveRecording() {
+                // Use simple MIME type for Blob execution (remove codecs)
+                const simpleType = this.mimeType.split(';')[0];
+                const blob = new Blob(this.chunks, { type: simpleType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+
+                // Determine extension
+                const ext = (simpleType.includes('mp4')) ? 'mp4' : 'webm';
+
+                a.download = `fireworks-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.${ext}`;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                }, 100);
+            }
+        }
+
+        /**
+         * Stars Background
+         */
+        class Star {
+            constructor() {
+                this.x = Math.random() * window.innerWidth;
+                this.y = Math.random() * window.innerHeight;
+                this.size = Math.random() * 2;
+                this.baseAlpha = Math.random() * 0.5 + 0.1;
+                this.offset = Math.random() * 100;
+            }
+            draw(ctx, time) {
+                const arr = Math.sin(time * 0.002 + this.offset);
+                const alpha = this.baseAlpha + arr * 0.1;
+                ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        /**
+         * Application Controller
+         */
+        class App {
+            constructor() {
+                this.canvas = document.getElementById('main-canvas');
+                this.ctx = this.canvas.getContext('2d');
+
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+
+                this.particles = [];
+                this.fireworks = [];
+                this.stars = [];
+
+                this.paused = false;
+                this.sound = new SoundManager();
+                // Initialize Recorder
+                this.recorder = null;
+
+                // State
+                this.mode = 'normal'; // normal, rapid, finale, auto
+                this.selectedShape = 'random'; // random or shape name
+                this.autoInterval = null;
+                this.isMouseDown = false;
+
+                this.resize();
+                this.initStars();
+                this.bindEvents();
+
+                // Initial Launch
+                this.launch(this.width / 2, this.height * 0.35);
+
+                // Loop
+                this.loop = this.loop.bind(this);
+                requestAnimationFrame(this.loop);
+            }
+
+            resize() {
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                this.canvas.width = this.width;
+                this.canvas.height = this.height;
+                // Re-init stars on huge resize? Just add implies randomness
+            }
+
+            initStars() {
+                for (let i = 0; i < 80; i++) {
+                    this.stars.push(new Star());
+                }
+            }
+
+            bindEvents() {
+                window.addEventListener('resize', () => this.resize());
+
+                // Controls
+                document.getElementById('btn-pause').addEventListener('click', (e) => {
+                    this.paused = !this.paused;
+                    e.currentTarget.classList.toggle('paused', this.paused);
+                    e.currentTarget.innerText = this.paused ? '▶️' : '⏸️';
+                });
+
+                document.getElementById('btn-sound').addEventListener('click', (e) => {
+                    // Ensure context is running on user gesture
+                    this.sound.init();
+                    const enabled = this.sound.toggle();
+                    e.currentTarget.innerText = enabled ? '🔊' : '🔇';
+                    e.currentTarget.classList.toggle('off', !enabled);
+                });
+
+                document.getElementById('btn-record').addEventListener('click', () => {
+                    // Ensure sound initialized for recording
+                    this.sound.init();
+                    if (!this.recorder) {
+                        this.recorder = new Recorder(this.canvas, this.sound.dest);
+                    }
+                    this.recorder.toggle();
+                });
+
+                // Modes
+                document.querySelectorAll('[data-mode]').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        // Clear previous active
+                        document.querySelectorAll('[data-mode]').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+
+                        this.setMode(e.target.dataset.mode);
+                    });
+                });
+
+                // Shapes
+                document.querySelectorAll('[data-shape]').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const shape = e.target.dataset.shape;
+                        if (this.selectedShape === shape) {
+                            // Toggle off -> Random
+                            this.selectedShape = 'random';
+                            e.target.classList.remove('active');
+                            // Highlight 'Random' mode button if not already
+                            document.querySelector('[data-mode="normal"]').click();
+                        } else {
+                            // Select Shape
+                            document.querySelectorAll('[data-shape]').forEach(b => b.classList.remove('active'));
+                            e.target.classList.add('active');
+                            this.selectedShape = shape;
+                        }
+                    });
+                });
+
+                // Canvas Interaction
+                this.canvas.addEventListener('mousedown', (e) => this.handleInputStart(e.clientX, e.clientY));
+                this.canvas.addEventListener('touchstart', (e) => this.handleInputStart(e.touches[0].clientX, e.touches[0].clientY));
+
+                window.addEventListener('mouseup', () => this.isMouseDown = false);
+                window.addEventListener('touchend', () => this.isMouseDown = false);
+
+                this.canvas.addEventListener('mousemove', (e) => this.handleInputMove(e.clientX, e.clientY));
+                this.canvas.addEventListener('touchmove', (e) => this.handleInputMove(e.touches[0].clientX, e.touches[0].clientY));
+            }
+
+            handleInputStart(x, y) {
+                if (this.paused) return;
+                this.sound.init();
+                this.isMouseDown = true;
+
+                if (this.mode === 'rapid') {
+                    // Rapid fire handled in loop or timer? 
+                    // Let's launch one immediately, then let loop handle hold
+                    this.launch(x, y);
+                } else if (this.mode === 'normal' || this.selectedShape !== 'random') {
+                    this.launch(x, y);
+                } else if (this.mode === 'finale') {
+                    this.triggerFinale();
+                }
+            }
+
+            handleInputMove(x, y) {
+                if (this.paused || !this.isMouseDown) return;
+                this.inputX = x;
+                this.inputY = y;
+            }
+
+            setMode(mode) {
+                this.mode = mode;
+
+                // Clear Auto Interval
+                if (this.autoInterval) {
+                    clearInterval(this.autoInterval);
+                    this.autoInterval = null;
+                }
+
+                if (mode === 'auto') {
+                    this.autoInterval = setInterval(() => {
+                        if (!this.paused) {
+                            const x = this.width * 0.2 + Math.random() * this.width * 0.6;
+                            const y = this.height * 0.2 + Math.random() * this.height * 0.4;
+                            this.launch(x, y);
+                        }
+                    }, 800);
+                }
+            }
+
+            triggerFinale() {
+                // 20 fireworks over 2 seconds
+                let count = 0;
+                const interval = setInterval(() => {
+                    if (count >= 20) clearInterval(interval);
+                    const x = this.width * 0.2 + Math.random() * this.width * 0.6;
+                    const y = this.height * 0.2 + Math.random() * this.height * 0.3;
+                    this.launch(x, y);
+                    count++;
+                }, 100);
+            }
+
+            launch(x, y) {
+                // Determine shape
+                let shape = this.selectedShape;
+                if (shape === 'random') {
+                    shape = (Math.random() > 0.3) ? ShapeGenerator.getRandomShape() : null; // 70% chance of random burst vs shape? 
+                    // Spec says "Normal/Random Shapes - Single fireworks with random shapes (default)"
+                    // It implies they are ALL shapes, or mix? 
+                    // Let's do Mix of Burst and Random Shape
+                    if (Math.random() < 0.5) shape = ShapeGenerator.getRandomShape();
+                    else shape = null; // Standard burst
+                }
+
+                this.fireworks.push(new Firework(x, y, shape));
+                this.sound.playLaunch();
+            }
+
+            shakeScreen() {
+                gsap.fromTo(this.canvas,
+                    { x: -5, y: -5 },
+                    { x: 5, y: 5, duration: 0.05, repeat: 3, yoyo: true, clearProps: "x,y" }
+                );
+            }
+
+            loop(time) {
+                requestAnimationFrame(this.loop);
+                if (this.paused) return;
+
+                // Composite Operation for Trails
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; // Fade out
+                this.ctx.fillRect(0, 0, this.width, this.height);
+
+                // Draw Stars
+                this.stars.forEach(star => star.draw(this.ctx, time));
+
+                // Rapid Fire Hold Logic
+                if (this.isMouseDown && this.mode === 'rapid') {
+                    // Throttle
+                    if (!this.lastRapidTime || time - this.lastRapidTime > 50) {
+                        this.launch(this.inputX || this.width / 2, this.inputY || this.height / 3);
+                        this.lastRapidTime = time;
+                    }
+                }
+
+                // Update & Draw Fireworks
+                for (let i = this.fireworks.length - 1; i >= 0; i--) {
+                    const fw = this.fireworks[i];
+                    fw.update(this.particles);
+                    fw.draw(this.ctx);
+                    if (fw.dead) this.fireworks.splice(i, 1);
+                }
+
+                // Update & Draw Particles
+                // Use screen blend mode for glow
+                this.ctx.globalCompositeOperation = 'screen';
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    p.update();
+                    p.draw(this.ctx);
+                    if (p.alpha <= 0) this.particles.splice(i, 1);
+                }
+                this.ctx.globalCompositeOperation = 'source-over';
+            }
+        }
+
+        // Start App
+        const app = new App();
+
+    </script>
+</body>
+
+</html>
