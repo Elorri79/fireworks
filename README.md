@@ -1,31 +1,32 @@
 # Fireworks Display 🎆
 
-Un espectáculo interactivo de fuegos artificiales renderizado en el navegador utilizando HTML5 Canvas.
+An interactive fireworks display rendered in the browser using HTML5 Canvas.
 
-## Sobre el Proyecto
+## About the Project
 
-Este proyecto es una simulación física de partículas diseñada para crear efectos visuales vibrantes y coloridos. Puedes lanzar fuegos artificiales haciendo clic en cualquier parte de la pantalla y disfrutar de una variedad de formas y colores explosivos.
+This project is a physics-based particle simulation designed to create vibrant and colorful visual effects. You can launch fireworks by clicking anywhere on the screen and enjoy a variety of explosive shapes and colors.
 
-### Créditos y Atribución
+### Credits & Attribution
 
-*   **Inspiración Original:** Basado en un fantástico proyecto realizado por el usuario de X (Twitter) [@ivanfioravanti](https://x.com/ivanfioravanti).
-*   **Desarrollo:** Realizado con asistencia de **Antigravity**, una IA avanzada de Google DeepMind para codificación.
+*   **Original Inspiration:** Based on a fantastic project by X (Twitter) user [@ivanfioravanti](https://x.com/ivanfioravanti).
+*   **Development:** Built with the assistance of **Antigravity**, an advanced AI coding assistant by Google DeepMind.
 
-## Características
+## Features
 
-*   ✨ **Físicas de Partículas:** Movimiento realista con gravedad, fricción y resistencia al aire.
-*   🔊 **Efectos de Sonido:** Audio inmersivo para lanzamientos y explosiones utilizando Web Audio API.
-*   🎨 **Variedad Visual:** Múltiples tipos de explosiones, estelas y paletas de colores vibrantes.
-*   🖥️ **Renderizado Canvas:** Alto rendimiento para animaciones suaves.
+*   ✨ **Particle Physics:** Realistic movement with gravity, friction, and air resistance.
+*   🔊 **Sound Effects:** Immersive audio for launches and explosions using the Web Audio API.
+*   🎨 **Visual Variety:** Multiple explosion types, trails, and vibrant color palettes.
+*   🖥️ **Canvas Rendering:** High performance for smooth animations.
 
-## Cómo Usar
+## How to Use
 
-Simplemente clona el repositorio y abre el archivo `index.html` en tu navegador web favorito.
+Simply clone the repository and open the `index.html` file in your favorite web browser.
 
 ```bash
 git clone https://github.com/Elorri79/fireworks.git
 cd fireworks
-# Abre index.html
+# Open index.html
 ```
 
-¡Disfruta del espectáculo!
+Enjoy the show!
+
